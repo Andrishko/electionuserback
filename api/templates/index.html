@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <form id="myForm">
+    <label for="dataInput">Введіть дані:</label>
+    <input type="text" id="nameInput" name="name" required>
+    <input type="text" id="passwordInput" name="password" required>
+    <button type="button" onclick="signAndSend()">Підписати та надіслати</button>
+  </form>
+  {{private_key}}
+
+
+  <script rel="javascript" type="text/javascript" href="js/jquery-1.11.3.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.4/axios.min.js"></script>
+
+  <script>
+
+    function generateKeyPair() {
+      var keyPair = CryptoJS.lib.WordArray.random(16); // Генерувати випадковий ключ
+
+      return {
+        publicKey: keyPair,
+        privateKey: keyPair
+      };
+    }
+
+    // Функція для підпису даних за допомогою приватного ключа
+    function signData(privateKey, data) {
+      var signature = CryptoJS.HmacSHA256(data, privateKey)
+
+      return signature;
+    }
+
+    function signAndSend() {
+      var name = document.getElementById("nameInput").value;
+      var password = document.getElementById("passwordInput").value;
+      // Імпортуємо необхідні функції з бібліотеки `crypto-js`
+      
+
+      // Генеруємо пару ключів RSA для цифрового підпису
+      const keyPair = CryptoJS.RSA.generateKeyPair();
+
+      // Дані, які необхідно підписати
+      const data = {
+        name: name,
+        password: password,
+      };
+
+      // Перетворюємо дані у рядок для підпису
+      const dataString = JSON.stringify(data);
+
+      // Обчислюємо хеш-значення зашифрованих даних
+      const hash = SHA256(dataString);
+
+      // Підписуємо хеш-значення приватним ключем
+      const signature = keyPair.privateKey.sign(hash).toString();
+
+      // Публічний ключ у форматі PEM
+      const publicKey = keyPair.publicKey.exportKey('pkcs8-public-pem');
+
+      // Формуємо дані для відправки
+      const dataToSend = {
+        data: dataString,
+        signature: signature,
+        publicKey: publicKey,
+      };
+
+      // Виконуємо AJAX-запит для надсилання даних, підпису та публічного ключа
+      axios.post('http://127.0.0.1:8000/api/send_bulletin', dataToSend)
+        .then(response => {
+          console.log('Дані успішно відправлені.');
+          console.log('Відповідь сервера:', response.data);
+        })
+        .catch(error => {
+          console.error('Помилка при відправці даних:', error);
+        });
+
+
+    }
+
+    function displayData(data) {
+      // Отримуємо список з радіо кнопками
+      const radioList = document.getElementById("radio-list");
+
+      // Очищуємо список перед тим, як додавати нові елементи
+      radioList.innerHTML = "";
+
+      // Проходимо по кожному елементу відповіді від сервера
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+
+        // Створюємо новий елемент списку з радіо кнопкою
+        const listItem = document.createElement("li");
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = "options";
+        radio.value = item.id;
+
+        const label = document.createElement("label");
+        label.innerHTML = item.label;
+
+        // Додаємо радіо кнопку та мітку до елементу списку
+        listItem.appendChild(radio);
+        listItem.appendChild(label);
+
+        // Додаємо елемент списку до списку з радіо кнопками
+        radioList.appendChild(listItem);
+      }
+    }
+
+    // Виконуємо AJAX запит та передаємо функцію displayData як обробник відповіді
+    // fetch("/api/data/")
+    //   .then(response => response.json())
+    //   .then(data => displayData(data))
+    //   .catch(error => console.error(error));
+  </script>
+
+
+</body>
+
+</html>
